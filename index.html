@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Previsor de Satisfação do Usuário com Serviços de Saúde
+</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#ffffff;--accent:#2563eb;--muted:#6b7280}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:#0f172a; margin:0; padding:24px}
+    .container{max-width:980px;margin:0 auto}
+    header{display:flex;gap:16px;align-items:center}
+    h1{margin:6px 0;font-size:22px}
+    p.lead{margin:0;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1fr 380px;gap:20px;margin-top:18px}
+    .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+    label{display:block;font-weight:600;margin-top:10px}
+    input[type=range]{width:100%}
+    .small{font-size:13px;color:var(--muted)}
+    .result-score{font-size:48px;font-weight:700;color:var(--accent);text-align:center}
+    .bar{height:12px;background:#e6eefc;border-radius:999px;overflow:hidden}
+    .bar > i{display:block;height:100%;background:linear-gradient(90deg,#bfdbfe,#60a5fa);}
+    .features-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .feature{display:flex;gap:8px;align-items:center}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    pre{background:#0b1220;color:#dbeafe;padding:12px;border-radius:8px;overflow:auto}
+    .muted-block{font-size:13px;color:var(--muted);margin-top:10px}
+    .btn{background:var(--accent);color:white;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
+    .note{font-size:13px;color:#374151}
+    .flowchart{margin-top:18px;padding:16px;background:#eef2ff;border-radius:10px}
+    .flow-step{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .flow-icon{width:20px;height:20px;background:var(--accent);border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Previsor de Satisfação do Usuário com Serviços de Saúde</h1>
+        <p class="lead">Trabalho desenvolvido para o Curso de <strong>Gestão de Serviços de Saúde</strong> da <strong>Universidade Federal de Minas Gerais (UFMG)</strong>, utilizando o modelo <strong>XGBoost</strong> para prever o <strong>Net Promoter Score (NPS)</strong> a partir de variáveis de desempenho e percepção do usuário.</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Entradas</h2>
+        <div class="muted-block">Ajuste os fatores que influenciam a satisfação do usuário</div>
+
+        <label>Tempo de espera (min)</label>
+        <input id="wait" type="range" min="0" max="240" value="40" />
+        <div class="small"><span id="waitVal">40</span> minutos</div>
+
+        <label>Número de profissionais (por plantão)</label>
+        <input id="staff" type="range" min="1" max="20" value="6" />
+        <div class="small"><span id="staffVal">6</span> profissionais</div>
+
+        <label>Infraestrutura (0 = péssima, 10 = excelente)</label>
+        <input id="infra" type="range" min="0" max="10" value="7" />
+        <div class="small"><span id="infraVal">7</span>/10</div>
+
+        <label>Atendimento humanizado (0 = ruim, 10 = excelente)</label>
+        <input id="human" type="range" min="0" max="10" value="8" />
+        <div class="small"><span id="humanVal">8</span>/10</div>
+
+        <label>Escolaridade do paciente (anos)</label>
+        <input id="edu" type="range" min="0" max="20" value="11" />
+        <div class="small"><span id="eduVal">11</span> anos</div>
+
+        <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
+          <button id="predict" class="btn">Prever Satisfação</button>
+          <button id="reset" class="btn" style="background:#94a3b8">Reset</button>
+        </div>
+
+        <div style="margin-top:12px" class="note">Obs: esta página é uma demonstração. A predição no navegador é uma implementação simplificada que imita um modelo XGBoost exportado. Instruções de como substituir pela API real estão na seção Metodologia.</div>
+      </section>
+
+      <aside class="card">
+        <h3>Resultado</h3>
+        <div style="padding:12px 6px">
+          <div class="result-score" id="score">7.6</div>
+          <div style="text-align:center;color:var(--muted)">Nota prevista (0–10)</div>
+
+          <div style="margin-top:12px">
+            <div class="small">Confiança (simulada): <strong id="conf">82%</strong></div>
+            <div class="bar" style="margin-top:6px"><i id="barFill" style="width:82%"></i></div>
+          </div>
+
+          <h4 style="margin-top:12px">Contribuição dos fatores (simples)</h4>
+          <div class="features-list" id="features"></div>
+
+          <div style="margin-top:14px" class="small">Interprete as contribuições como um resumo: valores positivos aumentam a nota; negativos reduzem.</div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="card" style="margin-top:18px">
+      <h2>Fluxo do Percurso do Paciente</h2>
+      <div class="flowchart">
+        <div class="flow-step"><div class="flow-icon">1</div><div>Chegada ao serviço e registro de <strong>tempo de espera</strong>.</div></div>
+        <div class="flow-step"><div class="flow-icon">2</div><div>Atendimento inicial — influência do <strong>número de profissionais</strong> disponíveis.</div></div>
+        <div class="flow-step"><div class="flow-icon">3</div><div>Avaliação da <strong>infraestrutura</strong> (limpeza, conforto, equipamentos).</div></div>
+        <div class="flow-step"><div class="flow-icon">4</div><div>Contato com equipe — percepção do <strong>atendimento humanizado</strong>.</div></div>
+        <div class="flow-step"><div class="flow-icon">5</div><div>Influência da <strong>escolaridade do paciente</strong> na compreensão e julgamento do serviço.</div></div>
+        <div class="flow-step"><div class="flow-icon">6</div><div>Geração da <strong>nota de satisfação simulada</strong> pelo modelo XGBoost.</div></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px">
+      <h2>Metodologia</h2>
+      <h3>Resumo do problema</h3>
+      <p class="note">Objetivo: prever a <strong>nota de satisfação</strong> (0–10) que um usuário dará a um serviço de saúde a partir de cinco variáveis: tempo de espera, número de profissionais, infraestrutura, atendimento humanizado e escolaridade.</p>
+      <h3>Fontes de dados</h3>
+      <ul>
+        <li>Pesquisas de satisfação (coletas locais de UBS/hospitais)</li>
+        <li>Registros operacionais (tempos de espera, número de profissionais por plantão)</li>
+        <li>Questionários que avaliam infraestrutura e atendimento humanizado</li>
+      </ul>
+      <h3>Pré-processamento (passo a passo)</h3>
+      <ol>
+        <li>Limpeza: remover registros inválidos.</li>
+        <li>Padronizar escalas (0–10).</li>
+        <li>Criar variável derivada: densidade de profissionais.</li>
+        <li>Dividir em treino, validação e teste.</li>
+      </ol>
+      <h3>Treinamento com XGBoost</h3>
+      <pre>from xgboost import XGBRegressor
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
+model = XGBRegressor(n_estimators=200, max_depth=4, learning_rate=0.05, objective='reg:squarederror')
+model.fit(X_train, y_train)
+model.save_model('xgb_satisfacao.json')
+</pre>
+      <h3>Avaliação</h3>
+      <ul>
+        <li>Métricas: MAE, RMSE, R².</li>
+        <li>Validação cruzada k-fold (k=5).</li>
+        <li>Explicabilidade com SHAP.</li>
+      </ul>
+      <h3>Deploy</h3>
+      <pre>from flask import Flask, request, jsonify
+from xgboost import XGBRegressor
+import numpy as np
+app = Flask(__name__)
+model = XGBRegressor()
+model.load_model('xgb_satisfacao.json')
+@app.route('/predict', methods=['POST'])
+def predict():
+  data = request.json
+  x = np.array([[data['wait'], data['staff'], data['infra'], data['human'], data['edu']]])
+  y_pred = model.predict(x)
+  return jsonify({'pred': float(y_pred[0])})
+app.run()
+</pre>
+    </section>
+
+    <footer class="muted-block">Página HTML com previsor de satisfação, fluxo do paciente e metodologia XGBoost.</footer>
+  </div>
+
+  <script>
+    const wait = document.getElementById('wait');
+    const staff = document.getElementById('staff');
+    const infra = document.getElementById('infra');
+    const human = document.getElementById('human');
+    const edu = document.getElementById('edu');
+    const waitVal = document.getElementById('waitVal');
+    const staffVal = document.getElementById('staffVal');
+    const infraVal = document.getElementById('infraVal');
+    const humanVal = document.getElementById('humanVal');
+    const eduVal = document.getElementById('eduVal');
+    const predictBtn = document.getElementById('predict');
+    const resetBtn = document.getElementById('reset');
+    const scoreEl = document.getElementById('score');
+    const confEl = document.getElementById('conf');
+    const barFill = document.getElementById('barFill');
+    const featuresEl = document.getElementById('features');
+
+    function updateLabels(){
+      waitVal.textContent = wait.value;
+      staffVal.textContent = staff.value;
+      infraVal.textContent = infra.value;
+      humanVal.textContent = human.value;
+      eduVal.textContent = edu.value;
+    }
+    [wait,staff,infra,human,edu].forEach(i=>i.addEventListener('input', updateLabels));
+    updateLabels();
+
+    function simulateXGBoostPrediction(x){
+      let base = 6.5;
+      let contribs = {wait:0, staff:0, infra:0, human:0, edu:0};
+      if(x.wait <= 15){ contribs.wait += 0.8; contribs.human += 0.3; }
+      else if(x.wait <= 45){ contribs.wait += 0.3; }
+      else if(x.wait <= 90){ contribs.wait -= 0.5; }
+      else { contribs.wait -= 1.2; }
+      contribs.infra += (x.infra - 5) * 0.25;
+      if(x.staff >= 10) contribs.staff += 0.6;
+      else if(x.staff >= 6) contribs.staff += 0.25;
+      else contribs.staff -= 0.4;
+      contribs.human += (x.human - 6) * 0.35;
+      contribs.edu += (Math.log(1 + Number(x.edu)) - Math.log(1 + 8)) * 0.4;
+      let total = base + contribs.wait + contribs.staff + contribs.infra + contribs.human + contribs.edu;
+      if(total < 0) total = 0;
+      if(total > 10) total = 10;
+      let conf = 50 + Math.min(40, Math.abs(6 - total) * 8 + (x.staff - 5) * 3);
+      if(conf > 98) conf = 98;
+      if(conf < 35) conf = 35;
+      return {pred: Math.round(total*10)/10, conf: Math.round(conf), contribs};
+    }
+
+    function renderFeatures(contribs){
+      featuresEl.innerHTML = '';
+      const entries = Object.entries(contribs).sort((a,b)=>Math.abs(b[1]) - Math.abs(a[1]));
+      for(const [k,v] of entries){
+        const div = document.createElement('div'); div.className='feature';
+        const name = document.createElement('div'); name.style.width='110px'; name.textContent = ({wait:'Tempo espera',staff:'Profissionais',infra:'Infraestrutura',human:'Humanizaçao',edu:'Escolaridade'})[k];
+        const val = document.createElement('div'); val.textContent = (v>=0?'+':'')+v.toFixed(2);
+        div.appendChild(name); div.appendChild(val);
+        featuresEl.appendChild(div);
+      }
+    }
+
+    predictBtn.addEventListener('click', ()=>{
+      const input = {wait:Number(wait.value), staff:Number(staff.value), infra:Number(infra.value), human:Number(human.value), edu:Number(edu.value)};
+      const out = simulateXGBoostPrediction(input);
+      scoreEl.textContent = out.pred.toFixed(1);
+      confEl.textContent = out.conf + '%';
+      barFill.style.width = out.conf + '%';
+      renderFeatures(out.contribs);
+    });
+
+    resetBtn.addEventListener('click', ()=>{ wait.value=40; staff.value=6; infra.value=7; human.value=8; edu.value=11; updateLabels(); predictBtn.click(); });
+    predictBtn.click();
+  </script>
+</body>
+</html>
